@@ -1,0 +1,16 @@
+version: "2"
+services:
+    www:
+        image: php:7.0-apache
+        ports: 
+            - "80:80"
+        volumes:
+            - ./:/var/www/html/
+    node_server:
+        image: node:lts
+        ports:
+            - "3000:3000"
+        working_dir: /home/node/app
+        volumes:
+            - ./node:/home/node/app
+        command: "npm start"

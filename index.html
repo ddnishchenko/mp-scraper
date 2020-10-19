@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <script src="https://static.matterport.com/showcase-sdk/2.0.1-0-g64e7e88/sdk.js"></script>
+</head>
+<body>
+    <!-- <iframe id="showcase" width='853' height='480' src='https://my.matterport.com/show/?m=yuCvULHhrmC&play=1' frameborder='0' allowfullscreen allow='xr-spatial-tracking'></iframe> -->
+    <iframe width="853" height="480"
+    src="https://my.matterport.com/show?m=yuCvULHhrmC&play=1"
+    frameborder="0" allowfullscreen allow="vr"
+    id="showcase_iframe"></iframe>
+    <!-- <iframe id="showcase" width="740" height="480" src="/bundle/3.1.8.2-12-g86e1cdce6/showcase.html?m=yuCvULHhrmC" frameborder=”0” allowfullscreen allow="vr"'></iframe> -->
+    <a id="downloadPanorama" download>Download Panorama Placeholder</a>
+    <button id="downloadAction">Download Manually</button>
+    <button id="downloadAll">Download All Panoramas</button>
+    <img src="" alt="name" id="panoramaPlaceholder">
+    <script>
+        var iframe = document.getElementById('showcase_iframe');
+        var a = document.getElementById('downloadPanorama');
+        var btn = document.getElementById('downloadAction');
+        var btnAll = document.getElementById('downloadAll');
+        var imagePlaceholder = document.getElementById('panoramaPlaceholder');
+        var dimensions = { width: 8192, height: 4096 };
+        var options = { mattertags: false, sweeps: true};
+        var model = {};
+        var sweeps = [];
+        
+
+        /**
+         * Flow for downloading all panoramas from Matterport model
+         * 1. sdk.Sweep.moveTo(sweepId, sweepCoordinates) - move to particular position in the model
+         * 2. App waits till moving to position is finished
+         * 3. sdk.Renderer.takeEquirectangular(dimensions,options) - download Panorama what respects current position in the model
+         * 4. wait response from step 3
+         * 5. response from step 3 which is base64 jpeg image, put into href property of A html element with property download
+         * 6. Repeat the flow for the next following sweeps(positions in model)
+         */
+
+        function loadedShowcaseHandler(sdk) {
+            var isDownloadAll = false;
+            var sweepThrogh = function* () {
+                for (let index = 0; index < sweeps.length; index++) {
+                    yield sweeps[index];
+                }
+            }
+            var generator = sweepThrogh();
+            var genMem;
+
+            async function takePano(sweepId) {
+                const panoData = await sdk.Renderer.takeEquirectangular(dimensions,options);
+                a.download = `model_${model.sid}_sweep_${sweepId}.jpg`;
+                a.href = panoData;
+                a.click();
+            }
+            console.log('Matterport SDK:', sdk);
+            btn.addEventListener('click', function(e){
+                
+                sdk.Renderer.takeEquirectangular(dimensions,options).then(img => {
+                    var d = new Date()
+                    a.href = img;
+                    a.download = 'panorama_' + d.toJSON() + '.jpg';
+                    imagePlaceholder.src = img;
+                })
+            });
+
+            sdk.on(sdk.Sweep.Event.ENTER, async function(oldSweep, newSweep) {
+                console.log(sdk.Sweep.Event.ENTER, newSweep);
+                if (isDownloadAll && !genMem.done) {
+                    await takePano(genMem.value.uuid);
+                    genMem = generator.next();
+                    await sdk.Sweep.moveTo(genMem.value.uuid, {
+                        transition: sdk.Sweep.Transition.INSTANT,
+                        transitionTime: false,
+                    })
+                }
+            });
+            sdk.on(sdk.Sweep.Event.EXIT, function(event) {
+                console.log(sdk.Sweep.Event.EXIT, event)
+            });
+
+            btnAll.addEventListener('click', async function(e) {
+                isDownloadAll = true;
+                genMem = generator.next();
+                await sdk.Sweep.moveTo(genMem.value.uuid, {
+                    transition: sdk.Sweep.Transition.INSTANT,
+                    transitionTime: false,
+                })
+
+            });
+            
+            sdk.App.getState().then(state => {
+                console.log('App state', state);
+            })
+            sdk.Model.getData()
+            .then(function(m) {
+                // Model data successfully retrieved
+                console.log('Model', m);
+                model = m;
+                sweeps = m.sweeps;
+            })
+            .catch(function(error) {
+                // Problem retrieving model data
+            });
+
+            sdk.Model.getDetails()
+            .then(function(model) {
+                // Model data successfully retrieved
+                console.log('Details', model);
+                // var spot1 = model.sweeps[0];
+            })
+            .catch(function(error) {
+                // Problem retrieving model data
+            });
+        }
+
+        function handleError(e) {
+            console.log(e);
+        }
+
+        function showcaseLoader() {
+            try {
+                window.MP_SDK.connect(
+                iframe, // Obtained earlier
+                '6cd09c1a40924b36b0afe58b84b05d51', // Your API key
+                '3.2' // SDK version you are using
+                // Use the latest version you can for your app
+                )
+                .then(loadedShowcaseHandler)
+                .catch(handleError);
+            } catch (e) {
+                console.error(e);
+            }
+        };
+        iframe.addEventListener('load', showcaseLoader, true);
+    </script>
+</body>
+</html>
