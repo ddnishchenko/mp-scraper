@@ -3,3 +3,21 @@ extends layout
 block content
   h1= title
   p Welcome to #{title}
+  form#matterport_model
+    input#materport_model_name(type="text")
+    button Download model assets
+  iframe(
+    width='853',
+    height='480',
+    src=model,
+    frameborder='0',
+    allowfullscreen,
+    allow='vr',
+    id='showcase_iframe'
+  )
+  a#downloadPanorama(download) Download Panorama Placeholder
+  button#downloadAction Download Manually
+  button#downloadAll Download All Panoramas
+  img#panoramaPlaceholder(alt='name')
+  script(src='javascripts/script.js')
+  
