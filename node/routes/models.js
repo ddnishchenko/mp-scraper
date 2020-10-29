@@ -3,8 +3,10 @@ var fs = require('promise-fs');
 var path = require('path');
 var router = express.Router();
 const puppeteer = require('puppeteer');
+const imgPath = path.join(__dirname, '..', 'assets', 'img');
 
-async function createPanoJson(options, pathName) {
+
+async function createJsonFile(options, pathName) {
     const data = JSON.stringify(options, null, 4);
     await fs.writeFile(pathName, data);
 }
@@ -71,8 +73,8 @@ router.get('/pano', async function(req, res, next) {
         console.log('End process:', d2);
         console.log('Close browser');
         browser.close();
-        res.status(200).json({message: `Model ${model} is downloaded`})
     });
+    res.status(200).json({message: `Model ${model} is downloaded`});
     
     
     
@@ -81,6 +83,14 @@ router.get('/pano', async function(req, res, next) {
     //
 });
 
+router.post('/sweeps', async function(req, res, next) {
+    const { body } = req;
+    const modelPath = path.join(imgPath, body.sid);
+    const modelDataPath = path.join(modelPath, 'data.json');
+    await fs.mkdir(modelPath, {recursive: true});
+    await createJsonFile(body, modelDataPath);
+    res.status(201).send(null);
+});
 /**
  * req.sid
  * req.sweep.id
@@ -89,29 +99,17 @@ router.get('/pano', async function(req, res, next) {
  */
 router.post('/', async function(req, res, next) {
     const { body } = req;
-    const imgPath = path.join(__dirname, '..', 'assets', 'img');
+    
     const modelPath = path.join(imgPath, body.sid);
     const panoPath = path.join(modelPath, body.sweep.uuid);
     const panoImg = panoPath + '.jpg';
-    const panoSettings = panoPath + '.json';
 
     await fs.mkdir(modelPath, {recursive: true});
-
-    try {
-        await Promise.all([
-            createPano(body.panorama, panoImg),
-            createPanoJson(body.sweep, panoSettings)
-        ]);
-        res
+    await createPano(body.panorama, panoImg);
+    res
         .status(201)
         .json({message: 'Panorama and its sweep options has been saved.'});
-    } catch(e) {
-        res
-        .status(400)
-        .json({message: 'Something went wrong while saving panorama', error: e});
-    }
 
-    
 });
 
 

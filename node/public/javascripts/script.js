@@ -72,7 +72,7 @@ function loadedShowcaseHandler(sdk) {
         var s = modelStore.get('sweeps');
         var newSweeps = s.filter(sweep => sweep.uuid !== yeildSweep.uuid)
         modelStore.set('sweeps', newSweeps);
-        console.log('remained sweeps', s.length);
+        console.log('remained sweeps', newSweeps.length);
     };
 
     var generator = sweepThrogh();
@@ -123,6 +123,13 @@ function loadedShowcaseHandler(sdk) {
 
         if (!oldSweep) {
             model = await sdk.Model.getData();
+            await fetch(location.origin + '/models/sweeps', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json;charset=utf-8'
+                },
+                body: JSON.stringify(model)
+            });
             sweeps = model.sweeps;
             modelStore = new DataStore(model.sid);
 
@@ -156,6 +163,7 @@ function loadedShowcaseHandler(sdk) {
                         location.reload();
                     } else {
                         modelStore.delete('sweeps');
+                        window.modelDownloaded = true;
                     }
                     return false;
                 }
